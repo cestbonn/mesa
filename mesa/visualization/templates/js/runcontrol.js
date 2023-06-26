@@ -15,6 +15,7 @@ const startModelButton = document.getElementById("play-pause");
 const stepModelButton = document.getElementById("step");
 const resetModelButton = document.getElementById("reset");
 const stepDisplay = document.getElementById("currentStep");
+const saveButton = document.getElementById("save-button");
 
 /**
  * A ModelController that defines the model state.
@@ -28,7 +29,12 @@ function ModelController(tick = 0, fps = 3, running = false, finished = false) {
   this.fps = fps;
   this.running = running;
   this.finished = finished;
-
+ 
+  this.save = function save() {
+   var filename = document.getElementById('save-input').value;
+   send({ type: "save", name: filename})
+  }
+ 
   /** Start the model and keep it running until stopped */
   this.start = function start() {
     this.running = true;
@@ -123,7 +129,7 @@ stepModelButton.onclick = () => {
   }
 };
 resetModelButton.onclick = () => controller.reset();
-
+saveButton.onclick = () => controller.save();
 /*
  * Websocket opening and message handling
  */
