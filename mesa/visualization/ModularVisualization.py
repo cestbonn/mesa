@@ -244,7 +244,9 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
                     self.application.model_kwargs[param].value = value
                 else:
                     self.application.model_kwargs[param] = value
-
+        elif msg["type"] == "save":
+            print('saved!')
+            self.application.model.save(msg["name"])
         else:
             if self.application.verbose:
                 print("Unexpected message!")
