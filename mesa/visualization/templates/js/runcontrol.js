@@ -313,6 +313,183 @@ const initGUI = function (model_params) {
     sidebar.appendChild(well);
   };
 
+ const addTextInput = function (text_id, button_id, default_text, button_text) {
+    var containerDiv = document.createElement('div');
+
+    var paragraphElement = document.createElement('p');
+
+    var valueLabel = document.createElement('label');
+    valueLabel.className = 'badge bg-primary';
+    valueLabel.textContent = 'Value';
+
+    var inputElement = document.createElement('input');
+    inputElement.type = 'text';
+    inputElement.id = text_id;
+    inputElement.style.display = 'inline-block';
+    inputElement.style.marginRight = '5px';
+    inputElement.style.height = '40px';
+    inputElement.style.padding = '6px 12px';
+    inputElement.style.fontSize = '14px';
+    inputElement.placeholder = default_text;
+
+    var buttonElement = document.createElement('button');
+    buttonElement.type = 'button';
+    buttonElement.id = button_id;
+    buttonElement.style.backgroundColor = '#4CAF50';
+    buttonElement.style.color = 'white';
+    buttonElement.style.border = 'none';
+    buttonElement.style.padding = '6px 20px';
+    buttonElement.style.textAlign = 'center';
+    buttonElement.style.textDecoration = 'none';
+    buttonElement.style.display = 'inline-block';
+    buttonElement.style.fontSize = '14px';
+    buttonElement.style.height = '40px';
+    buttonElement.style.cursor = 'pointer';
+    buttonElement.style.borderRadius = '4px';
+    buttonElement.textContent = button_text;
+
+    paragraphElement.appendChild(valueLabel);
+
+    containerDiv.appendChild(paragraphElement);
+    containerDiv.appendChild(inputElement);
+    containerDiv.appendChild(buttonElement);
+    sidebar.appendChild(containerDiv);
+
+    return {input: inputElement, button: buttonElement}
+  }
+
+ const addModifyInput = function (param, obj) {
+    let index = 0;
+
+    const dropdown = function (name, choices, label) {
+        const domID = name + "_id";
+        const template = [
+      `<p>
+        <label for='${domID}' class='badge bg-primary'>
+        ${label}
+        </label>
+      </p>`,
+      `<select
+        id='${domID}'
+        class='form-select'
+        style='width:auto'
+        aria-label='select input'>`,
+    ];
+        for (const idx in choices) {
+          const choice = choices[idx];
+          const selected = choice;
+          template.push(`<option ${selected} value=${idx}>${choice}</option>`);
+        }
+        template.push("</select>");
+        const div = document.createElement("div");
+        div.innerHTML = template.join("");
+        sidebar.appendChild(div);
+        var select = document.getElementById(domID);
+        return select
+    }
+
+    const addWhiteboard = function () {
+        var paragraphElement = document.createElement('p');
+        var valueLabel = document.createElement('label');
+        valueLabel.className = 'badge bg-primary';
+        valueLabel.textContent = 'Parameters';
+
+        const whiteboard = document.createElement("div");
+        whiteboard.setAttribute('id', 'whiteboard');
+        whiteboard.style.border = "1px solid gray";
+        whiteboard.style.borderRadius = "10px";
+        whiteboard.style.height = "400px";
+        whiteboard.style.width = "350px";
+        whiteboard.style.overflow = "auto";
+        whiteboard.style.padding = "10px";
+        paragraphElement.appendChild(valueLabel);
+        sidebar.appendChild(paragraphElement);
+        sidebar.appendChild(whiteboard);
+
+        for (const agent in obj.choices) {
+            for (const attr in obj.choices[agent]) {
+                const value = obj.choices[agent][attr];
+                var para = document.createElement("p");
+                para.style.padding = "2px";
+                para.style.backgroundColor = index % 2 === 0 ? "#f2f2f2" : "white";
+                para.innerHTML = `<b>${agent}</b>: <i>${attr}</i> = <span style='color:blue'>${value}</span>`;
+                whiteboard.appendChild(para);
+                index++;
+            }
+        }
+
+        return whiteboard
+    }
+
+    const agentsDropdown = dropdown(param + "_agent", obj.choices_agent, 'Agent');
+    const attrsDropdown = dropdown(param + "_attr", obj.choices_attr[obj.choices_agent[0]], 'Attribute');
+    var default_value = obj.choices[agentsDropdown.options[0].text][attrsDropdown.options[0].text];
+
+    const textInput = addTextInput('modify_value', 'modify_button', default_value, 'submit');
+    const whiteboard = addWhiteboard();
+
+    function populateAttrsDropdown() {
+      var selectedAgent = obj.choices_agent[agentsDropdown.value];
+      attrsDropdown.innerHTML = ''; // Clear existing options
+      if (selectedAgent in obj.choices_attr) {
+        var attrs = obj.choices_attr[selectedAgent];
+        textInput.input.value = obj.choices[selectedAgent][attrs[0]];
+        attrs.forEach(function(attr) {
+          var option = document.createElement('option');
+          option.textContent = attr;
+          attrsDropdown.appendChild(option);
+        });
+      } else {
+        var option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Select an agent first';
+        attrsDropdown.appendChild(option);
+      }
+    };
+
+    function populateWhiteboard() {
+        // Clear the whiteboard
+        whiteboard.innerHTML = '';
+
+        // Populate the whiteboard with all parameters and their current values
+        // Reset index to 0 each time we populate the whiteboard
+        index = 0;
+        for (const agent in obj.choices) {
+            for (const attr in obj.choices[agent]) {
+                const value = obj.choices[agent][attr];
+                var para = document.createElement("p");
+                para.style.padding = "2px";
+                para.style.backgroundColor = index % 2 === 0 ? "#f2f2f2" : "white";
+                para.innerHTML = `<b>${agent}</b>: <i>${attr}</i> = <span style='color:blue'>${value}</span>`;
+                whiteboard.appendChild(para);
+                index++;
+            }
+        }
+    };
+
+    populateAttrsDropdown();
+    populateWhiteboard();
+    agentsDropdown.onchange = () => populateAttrsDropdown();
+    attrsDropdown.onchange = () => textInput.input.value = obj.choices[agentsDropdown.options[agentsDropdown.value].text][attrsDropdown.value];
+    textInput.button.onclick = () =>
+        { var agent = agentsDropdown.options[agentsDropdown.value].text;
+          var attr = attrsDropdown.value;
+          var value = textInput.input.value;
+          send({ type: 'modify', agent: agent, attr: attr, value: value, container: param});
+          obj.choices[agent][attr] = value
+
+          var para = document.createElement("p");
+          para.style.padding = "2px";
+          para.style.backgroundColor = index % 2 === 0 ? "#f2f2f2" : "white";
+          para.innerHTML = `<b>${agent}</b>: <i>${attr}</i> = <span style='color:blue'>${value}</span>`;
+          whiteboard.appendChild(para);
+          // No need to increase index here because it will be reset in populateWhiteboard
+
+          populateWhiteboard();
+        }
+
+  }
+
   const addParamInput = function (param, option) {
     switch (option["param_type"]) {
       case "checkbox":
@@ -333,6 +510,10 @@ const initGUI = function (model_params) {
 
       case "static_text":
         addTextBox(param, option);
+        break;
+
+     case "modify_input":
+        addModifyInput(param, option);
         break;
     }
   };
