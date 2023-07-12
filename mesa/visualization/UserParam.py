@@ -5,6 +5,7 @@ CHECKBOX = "checkbox"
 CHOICE = "choice"
 SLIDER = "slider"
 STATIC_TEXT = "static_text"
+MODIFY = "modify_input"
 
 
 class UserParam:
@@ -163,3 +164,14 @@ class NumberInput(UserParam):
         self._value = value
         valid = isinstance(self.value, numbers.Number)
         self.maybe_raise_error(valid)
+
+
+class ModifyInput(UserParam):
+    def __init__(self, name="", choices=None, description=None):
+        self.param_type = MODIFY
+        self.name = name
+        self.choices = choices
+        self.choices_agent = list(choices.keys())
+        self.choices_attr = {k: [_v for _v in v.keys()] for k, v in self.choices.items()}
+        self.description = description
+        self._value = choices
