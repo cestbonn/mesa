@@ -248,8 +248,13 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
             print('saved!')
             self.application.model.save(msg["name"])
         elif msg['type'] == "modify":
-            agent, attr, value = msg['agent'], msg['attr'], msg['value']
-            self.application.model_kwargs[msg['container']].choices[agent][attr] = float(value)
+            # agent, attr, value = msg['agent'], msg['attr'], msg['value']
+            # self.application.model_kwargs[msg['container']].choices[agent][attr] = float(value)
+            po_id, supplier, transition = msg['id'], msg['supplier'], msg['transition']
+            self.application.model_kwargs[msg['container']].choices[po_id]['supplier']['value'] = supplier
+            self.application.model_kwargs[msg['container']].choices[po_id]['transition']['value'] = transition
+            # self.application.model_kwargs[msg['container']].choices[agent][attr] = float(value) if value.isdigit() else value
+            # self.application.model.modify(msg["params_name"], msg["params_value"])
         else:
             if self.application.verbose:
                 print("Unexpected message!")
