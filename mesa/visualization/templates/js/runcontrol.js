@@ -16,7 +16,6 @@ const stepModelButton = document.getElementById("step");
 const resetModelButton = document.getElementById("reset");
 const stepDisplay = document.getElementById("currentStep");
 const saveButton = document.getElementById("save-button");
-
 /**
  * A ModelController that defines the model state.
  * @param  {number} tick=0 - Initial step of the model
@@ -29,12 +28,12 @@ function ModelController(tick = 0, fps = 3, running = false, finished = false) {
   this.fps = fps;
   this.running = running;
   this.finished = finished;
- 
+
+
   this.save = function save() {
-   var filename = document.getElementById('save-input').value;
-   send({ type: "save", name: filename})
+    var filename = document.getElementById('save-input').value;
+    send({ type: "save", name: filename})
   }
- 
   /** Start the model and keep it running until stopped */
   this.start = function start() {
     this.running = true;
@@ -105,11 +104,11 @@ function ModelController(tick = 0, fps = 3, running = false, finished = false) {
  */
 const fpsControl = new Slider("#fps", {
   max: 20,
-  min: 1,
+  min: 0,
   value: controller.fps,
-  ticks: [1, 20],
-  ticks_labels: [1, 20],
-  ticks_position: [1, 100],
+  ticks: [0, 20],
+  ticks_labels: [0, 20],
+  ticks_position: [0, 100],
 });
 fpsControl.on("change", () => controller.updateFPS(fpsControl.getValue()));
 
@@ -277,15 +276,15 @@ const initGUI = function (model_params) {
   const addChoiceInput = function (param, obj) {
     const domID = param + "_id";
     const template = [
-      `<p>
+      `<p></p>
         <label for='${domID}' class='badge bg-primary'>
         ${obj.name}
         </label>
-      </p>`,
+      `,
       `<select
         id='${domID}'
         class='form-select'
-        style='width:auto'
+        style='width:200px'
         aria-label='select input'>`,
     ];
     for (const idx in obj.choices) {
@@ -313,7 +312,7 @@ const initGUI = function (model_params) {
     sidebar.appendChild(well);
   };
 
- const addTextInput = function (text_id, button_id, default_text, button_text) {
+  const addTextInput = function (text_id, button_id, default_text, button_text) {
     var containerDiv = document.createElement('div');
 
     var paragraphElement = document.createElement('p');
@@ -358,7 +357,7 @@ const initGUI = function (model_params) {
     return {input: inputElement, button: buttonElement}
   }
 
- const addModifyInput = function (param, obj) {
+  const addModifyInput = function (param, obj) {
     let index = 0;
 
     const dropdown = function (name, choices, label) {
@@ -490,6 +489,268 @@ const initGUI = function (model_params) {
 
   }
 
+  const addModifyChoice = function (param, obj) {
+    function createAllDropdowns(data, parent) {
+        let dropdowns = [];
+        let path = [];
+        let labels = ['PO ID', 'Attribute', 'Options']
+
+        const getPathData = function(path) {
+            let currentData = data;
+            for (const key of path) {
+                currentData = currentData[key];
+            }
+            return currentData;
+        }
+
+        const createDropdown = function(level, choices) {
+            const name = `level${level}`;
+            const label = labels[level];
+            const domID = name + "_id";
+
+            const div = document.createElement("div");
+            const labelElement = document.createElement("label");
+            labelElement.setAttribute("for", domID);
+            labelElement.className = "badge bg-primary";
+            labelElement.style.marginRight = "20px";
+            labelElement.style.width = "100px";
+            labelElement.innerText = label;
+            div.appendChild(labelElement);
+
+            const select = document.createElement("select");
+            select.id = domID;
+            select.className = 'form-select';
+            select.style = 'width:250px; display:inline-block';
+            select.setAttribute('aria-label', 'select input');
+
+            for (const choice of choices) {
+                const option = document.createElement("option");
+                option.value = choice;
+                option.text = choice;
+                select.appendChild(option);
+            }
+
+            select.addEventListener('change', function(e) {
+                const selectedKey = e.target.value;
+                path[level] = selectedKey;
+                updateDropdowns(level + 1);
+            });
+
+            div.appendChild(select);
+            return div;
+        }
+
+        const clearDropdown = function(level) {
+            // Remove old options
+            const select = dropdowns[level].querySelector('select');
+            while (select.firstChild) {
+                select.removeChild(select.firstChild);
+            }
+        }
+
+        const updateDropdowns = function(level) {
+            const pathData = getPathData(path.slice(0, level));
+            let choices;
+            if (Array.isArray(pathData)) {
+                choices = pathData;
+            } else if(pathData) {
+                choices = Object.keys(pathData);
+            }
+
+            if (choices && choices.length > 0) {
+                if (dropdowns.length <= level) {
+                    const dropdown = createDropdown(level, choices);
+                    dropdowns.push(dropdown);
+                    parent.appendChild(dropdown);
+                } else {
+                    // Remove old options
+                    const select = dropdowns[level].querySelector('select');
+                    while (select.firstChild) {
+                        select.removeChild(select.firstChild);
+                    }
+                    // Add new options
+                    for (const choice of choices) {
+                        const option = document.createElement("option");
+                        option.value = choice;
+                        option.text = choice;
+                        select.appendChild(option);
+                    }
+                }
+                path[level] = choices[0];
+                updateDropdowns(level + 1);
+            } else {
+                // Clear lower level dropdowns if no choices are available
+                for(let i = level; i < dropdowns.length; i++) {
+                    clearDropdown(i);
+                }
+            }
+        }
+
+        updateDropdowns(0);
+    }
+
+    var buttonElement = document.createElement('button');
+    buttonElement.type = 'button';
+    buttonElement.id = 'submit_button';
+    buttonElement.style.backgroundColor = '#4CAF50';
+    buttonElement.style.color = 'white';
+    buttonElement.style.border = 'none';
+    buttonElement.style.padding = '6px 20px';
+    buttonElement.style.textAlign = 'center';
+    buttonElement.style.textDecoration = 'none';
+    buttonElement.style.display = 'inline-block';
+    buttonElement.style.fontSize = '14px';
+    buttonElement.style.height = '40px';
+    buttonElement.style.cursor = 'pointer';
+    buttonElement.style.borderRadius = '4px';
+    buttonElement.textContent = 'Submit';
+
+    // Usage:
+    createAllDropdowns(obj.choices, sidebar);
+    sidebar.appendChild(buttonElement);
+
+  }
+
+  const addModifyChoice2 = function (param, obj) {
+    function createDropdowns(data, parent) {
+        let dropdowns = {};
+
+        const createDropdown = function(id, name, choices, selectedValue) {
+            const div = document.createElement("div");
+            const labelElement = document.createElement("label");
+            labelElement.setAttribute("for", id);
+            labelElement.className = "badge bg-primary";
+            labelElement.style.marginTop = "10px";
+            labelElement.style.display = "block";
+            labelElement.style.width = "100px";  // Set width of the label block
+            labelElement.innerText = name;
+            div.appendChild(labelElement);
+
+            const select = document.createElement("select");
+            select.id = id;
+            select.className = 'form-select';
+            select.style = 'width:200px; display:inline-block';
+            select.setAttribute('aria-label', 'select input');
+
+            for (const choice of choices) {
+                const option = document.createElement("option");
+                option.value = choice;
+                option.text = choice;
+                if (choice === selectedValue) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            }
+
+            div.appendChild(select);
+            return div;
+        }
+
+        const populateDropdown = function(select, choices, selectedValue) {
+            while (select.firstChild) {
+                select.removeChild(select.firstChild);
+            }
+            for (const choice of choices) {
+                const option = document.createElement("option");
+                option.value = choice;
+                option.text = choice;
+                if (choice === selectedValue) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            }
+        }
+
+        const firstIdData = data[Object.keys(data)[0]];
+        dropdowns.id = createDropdown('id', 'PO ID', Object.keys(data));
+        dropdowns.supplier = createDropdown('supplier', 'Supplier', firstIdData.supplier.options, firstIdData.supplier.value);
+        dropdowns.transition = createDropdown('transition', 'Transportation', firstIdData.transition.options, firstIdData.transition.value);
+
+        parent.appendChild(dropdowns.id);
+        parent.appendChild(dropdowns.supplier);
+        parent.appendChild(dropdowns.transition);
+
+        // Add event listener to ID dropdown
+        document.getElementById('id').addEventListener('change', function(e) {
+            const selectedId = e.target.value;
+            const idData = data[selectedId];
+
+            // Populate supplier dropdown
+            populateDropdown(document.getElementById('supplier'), idData.supplier.options, idData.supplier.value);
+
+            // Populate transition dropdown
+            populateDropdown(document.getElementById('transition'), idData.transition.options, idData.transition.value);
+        });
+
+        // Add button
+        var buttonElement = document.createElement('button');
+        buttonElement.type = 'button';
+        buttonElement.id = 'submit_button';
+        buttonElement.style.backgroundColor = '#4CAF50';
+        buttonElement.style.color = 'white';
+        buttonElement.style.border = 'none';
+        buttonElement.style.padding = '6px 20px';
+        buttonElement.style.textAlign = 'center';
+        buttonElement.style.textDecoration = 'none';
+        buttonElement.style.display = 'inline-block';
+        buttonElement.style.fontSize = '14px';
+        buttonElement.style.height = '40px';
+        buttonElement.style.cursor = 'pointer';
+        buttonElement.style.borderRadius = '4px';
+        buttonElement.style.marginTop = "10px";
+        buttonElement.style.marginBottom = "10px";
+        buttonElement.textContent = 'Submit';
+
+        buttonElement.addEventListener("click", function() {
+            let id = document.getElementById('id').value;
+            let supplier = document.getElementById('supplier').value;
+            let transition = document.getElementById('transition').value;
+            send({ 'type': 'modify', 'container': 'parameters', 'id': id, 'supplier': supplier, 'transition': transition})
+
+            data[id].supplier.value = supplier;
+            data[id].transition.value = transition;
+
+            let whiteboard = document.getElementById('whiteboard');
+            parent.removeChild(whiteboard);
+            whiteboard = addWhiteboard(data);
+            parent.appendChild(whiteboard);
+
+        });
+        parent.appendChild(buttonElement);
+
+        const whiteboard = addWhiteboard(data);
+        parent.appendChild(whiteboard);
+    }
+
+    function addWhiteboard(data) {
+        const whiteboard = document.createElement("div");
+        whiteboard.setAttribute('id', 'whiteboard');
+        whiteboard.style.border = "1px solid gray";
+        whiteboard.style.borderRadius = "10px";
+        whiteboard.style.height = "400px";
+        whiteboard.style.width = "350px";
+        whiteboard.style.overflow = "auto";
+        whiteboard.style.padding = "10px";
+
+        let index = 0;
+        for (const id in data) {
+            const supplier = data[id].supplier.value;
+            const transition = data[id].transition.value;
+            const para = document.createElement("p");
+            para.style.padding = "2px";
+            para.style.backgroundColor = index % 2 === 0 ? "#f2f2f2" : "white";
+            para.innerHTML = `<b>${id}</b>: Supplier = <span style='color:blue'>${supplier}</span>, Transition = <span style='color:blue'>${transition}</span>`;
+            whiteboard.appendChild(para);
+            index++;
+        }
+
+    return whiteboard;
+}
+
+    createDropdowns(obj.choices, sidebar);
+
+  }
+
   const addParamInput = function (param, option) {
     switch (option["param_type"]) {
       case "checkbox":
@@ -512,8 +773,12 @@ const initGUI = function (model_params) {
         addTextBox(param, option);
         break;
 
-     case "modify_input":
+      case "modify_input":
         addModifyInput(param, option);
+        break;
+
+      case "modify_choice":
+        addModifyChoice2(param, option);
         break;
     }
   };
