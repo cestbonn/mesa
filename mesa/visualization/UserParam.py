@@ -7,6 +7,7 @@ SLIDER = "slider"
 STATIC_TEXT = "static_text"
 MODIFY_INPUT = "modify_input"
 MODIFY_CHOICE = "modify_choice"
+NEW_CHOICE = "new_choice"
 
 
 class UserParam:
@@ -129,11 +130,11 @@ class Choice(UserParam):
     @value.setter
     def value(self, value):
         self._value = value
-        if self._value not in self.choices:
-            print(
-                "Selected choice value not in available choices, selected first choice from 'choices' list"
-            )
-            self._value = self.choices[0]
+        # if self._value not in self.choices:
+        #     print(
+        #         "Selected choice value not in available choices, selected first choice from 'choices' list"
+        #     )
+        #     self._value = self.choices[0]
 
 
 class StaticText(UserParam):
@@ -186,3 +187,40 @@ class ModifyChoice(UserParam):
         self.choices_attr = {k: [_v for _v in v.keys()] for k, v in self.choices.items()}
         self.description = description
         self._value = choices
+
+
+class NewChoice(UserParam):
+    """
+    String-based dropdown input, for selecting choices within a model
+
+    Example:
+    choice_option = Choice(
+        'My Choice',
+        value='Default choice',
+        choices=['Default Choice', 'Alternate Choice']
+    )
+    """
+
+    def __init__(self, name="", value=None, choices=None, description=None):
+        self.param_type = NEW_CHOICE
+        self.name = name
+        self._value = value
+        self.choices = choices
+        self.description = description
+
+        # Validate option type to make sure values are supplied properly
+        valid = not (self.value is None or len(self.choices) == 0)
+        self.maybe_raise_error(valid)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+        if self._value not in self.choices:
+            print(
+                "Selected choice value not in available choices, selected first choice from 'choices' list"
+            )
+            self._value = self.choices[0]

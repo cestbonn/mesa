@@ -16,6 +16,10 @@ const stepModelButton = document.getElementById("step");
 const resetModelButton = document.getElementById("reset");
 const stepDisplay = document.getElementById("currentStep");
 const saveButton = document.getElementById("save-button");
+// startModelButton.firstElementChild.innerText = "Stop";
+
+// const chartElements = document.getElementById("elements");
+
 /**
  * A ModelController that defines the model state.
  * @param  {number} tick=0 - Initial step of the model
@@ -29,9 +33,27 @@ function ModelController(tick = 0, fps = 3, running = false, finished = false) {
   this.running = running;
   this.finished = finished;
 
-
   this.save = function save() {
     var filename = document.getElementById('save-input').value;
+
+    document.getElementById('save-input').value='';
+    const option = document.createElement("option");
+    option.value = filename+'.csv';
+    option.text = filename+'.csv';
+
+    const compared_data_dropdown = document.getElementById('compared_data_id');
+    var flg = true;
+    for (let i = 0; i<compared_data_dropdown.options.length; i++){
+        if (compared_data_dropdown.options[i].value === option.value) {
+            flg = false;
+            break;
+        }
+    }
+    if (flg === true){
+        compared_data_dropdown.appendChild(option);
+    }
+
+
     send({ type: "save", name: filename})
   }
   /** Start the model and keep it running until stopped */
@@ -277,7 +299,7 @@ const initGUI = function (model_params) {
     const domID = param + "_id";
     const template = [
       `<p></p>
-        <label for='${domID}' class='badge bg-primary'>
+        <label for='${domID}' class='badge bg-primary' style="width: 200px">
         ${obj.name}
         </label>
       `,
@@ -290,7 +312,8 @@ const initGUI = function (model_params) {
     for (const idx in obj.choices) {
       const choice = obj.choices[idx];
       const selected = choice === obj.value ? "selected" : "";
-      template.push(`<option ${selected} value=${idx}>${choice}</option>`);
+      // template.push(`<option ${selected} value=${idx}>${choice}</option>`);
+      template.push(`<option ${selected} value=${choice}>${choice}</option>`);
     }
 
     // Close the select options
@@ -302,7 +325,8 @@ const initGUI = function (model_params) {
     sidebar.appendChild(div);
 
     const select = document.getElementById(domID);
-    select.onchange = () => onSubmitCallback(param, obj.choices[select.value]);
+    // select.onchange = () => onSubmitCallback(param, obj.choices[select.value]);
+    select.onchange = () => onSubmitCallback(param, select.value);
   };
 
   const addTextBox = function (param, obj) {
@@ -489,140 +513,155 @@ const initGUI = function (model_params) {
 
   }
 
-  const addModifyChoice = function (param, obj) {
-    function createAllDropdowns(data, parent) {
-        let dropdowns = [];
-        let path = [];
-        let labels = ['PO ID', 'Attribute', 'Options']
-
-        const getPathData = function(path) {
-            let currentData = data;
-            for (const key of path) {
-                currentData = currentData[key];
-            }
-            return currentData;
-        }
-
-        const createDropdown = function(level, choices) {
-            const name = `level${level}`;
-            const label = labels[level];
-            const domID = name + "_id";
-
-            const div = document.createElement("div");
-            const labelElement = document.createElement("label");
-            labelElement.setAttribute("for", domID);
-            labelElement.className = "badge bg-primary";
-            labelElement.style.marginRight = "20px";
-            labelElement.style.width = "100px";
-            labelElement.innerText = label;
-            div.appendChild(labelElement);
-
-            const select = document.createElement("select");
-            select.id = domID;
-            select.className = 'form-select';
-            select.style = 'width:250px; display:inline-block';
-            select.setAttribute('aria-label', 'select input');
-
-            for (const choice of choices) {
-                const option = document.createElement("option");
-                option.value = choice;
-                option.text = choice;
-                select.appendChild(option);
-            }
-
-            select.addEventListener('change', function(e) {
-                const selectedKey = e.target.value;
-                path[level] = selectedKey;
-                updateDropdowns(level + 1);
-            });
-
-            div.appendChild(select);
-            return div;
-        }
-
-        const clearDropdown = function(level) {
-            // Remove old options
-            const select = dropdowns[level].querySelector('select');
-            while (select.firstChild) {
-                select.removeChild(select.firstChild);
-            }
-        }
-
-        const updateDropdowns = function(level) {
-            const pathData = getPathData(path.slice(0, level));
-            let choices;
-            if (Array.isArray(pathData)) {
-                choices = pathData;
-            } else if(pathData) {
-                choices = Object.keys(pathData);
-            }
-
-            if (choices && choices.length > 0) {
-                if (dropdowns.length <= level) {
-                    const dropdown = createDropdown(level, choices);
-                    dropdowns.push(dropdown);
-                    parent.appendChild(dropdown);
-                } else {
-                    // Remove old options
-                    const select = dropdowns[level].querySelector('select');
-                    while (select.firstChild) {
-                        select.removeChild(select.firstChild);
-                    }
-                    // Add new options
-                    for (const choice of choices) {
-                        const option = document.createElement("option");
-                        option.value = choice;
-                        option.text = choice;
-                        select.appendChild(option);
-                    }
-                }
-                path[level] = choices[0];
-                updateDropdowns(level + 1);
-            } else {
-                // Clear lower level dropdowns if no choices are available
-                for(let i = level; i < dropdowns.length; i++) {
-                    clearDropdown(i);
-                }
-            }
-        }
-
-        updateDropdowns(0);
-    }
-
-    var buttonElement = document.createElement('button');
-    buttonElement.type = 'button';
-    buttonElement.id = 'submit_button';
-    buttonElement.style.backgroundColor = '#4CAF50';
-    buttonElement.style.color = 'white';
-    buttonElement.style.border = 'none';
-    buttonElement.style.padding = '6px 20px';
-    buttonElement.style.textAlign = 'center';
-    buttonElement.style.textDecoration = 'none';
-    buttonElement.style.display = 'inline-block';
-    buttonElement.style.fontSize = '14px';
-    buttonElement.style.height = '40px';
-    buttonElement.style.cursor = 'pointer';
-    buttonElement.style.borderRadius = '4px';
-    buttonElement.textContent = 'Submit';
-
-    // Usage:
-    createAllDropdowns(obj.choices, sidebar);
-    sidebar.appendChild(buttonElement);
-
-  }
+  // const addModifyChoice = function (param, obj) {
+  //   function createAllDropdowns(data, parent) {
+  //       let dropdowns = [];
+  //       let path = [];
+  //       let labels = ['PO ID', 'Attribute', 'Options']
+  //
+  //       const getPathData = function(path) {
+  //           let currentData = data;
+  //           for (const key of path) {
+  //               currentData = currentData[key];
+  //           }
+  //           return currentData;
+  //       }
+  //
+  //       const createDropdown = function(level, choices) {
+  //           const name = `level${level}`;
+  //           const label = labels[level];
+  //           const domID = name + "_id";
+  //
+  //           const div = document.createElement("div");
+  //           const labelElement = document.createElement("label");
+  //           labelElement.setAttribute("for", domID);
+  //           labelElement.className = "badge bg-primary";
+  //           labelElement.style.marginRight = "20px";
+  //           labelElement.style.width = "100px";
+  //           labelElement.innerText = label;
+  //           div.appendChild(labelElement);
+  //
+  //           const select = document.createElement("select");
+  //           select.id = domID;
+  //           select.className = 'form-select';
+  //           select.style = 'width:250px; display:inline-block';
+  //           select.setAttribute('aria-label', 'select input');
+  //
+  //           for (const choice of choices) {
+  //               const option = document.createElement("option");
+  //               option.value = choice;
+  //               option.text = choice;
+  //               select.appendChild(option);
+  //           }
+  //
+  //           select.addEventListener('change', function(e) {
+  //               const selectedKey = e.target.value;
+  //               path[level] = selectedKey;
+  //               updateDropdowns(level + 1);
+  //           });
+  //
+  //           div.appendChild(select);
+  //           return div;
+  //       }
+  //
+  //       const clearDropdown = function(level) {
+  //           // Remove old options
+  //           const select = dropdowns[level].querySelector('select');
+  //           while (select.firstChild) {
+  //               select.removeChild(select.firstChild);
+  //           }
+  //       }
+  //
+  //       const updateDropdowns = function(level) {
+  //           const pathData = getPathData(path.slice(0, level));
+  //           let choices;
+  //           if (Array.isArray(pathData)) {
+  //               choices = pathData;
+  //           } else if(pathData) {
+  //               choices = Object.keys(pathData);
+  //           }
+  //
+  //           if (choices && choices.length > 0) {
+  //               if (dropdowns.length <= level) {
+  //                   const dropdown = createDropdown(level, choices);
+  //                   dropdowns.push(dropdown);
+  //                   parent.appendChild(dropdown);
+  //               } else {
+  //                   // Remove old options
+  //                   const select = dropdowns[level].querySelector('select');
+  //                   while (select.firstChild) {
+  //                       select.removeChild(select.firstChild);
+  //                   }
+  //                   // Add new options
+  //                   for (const choice of choices) {
+  //                       const option = document.createElement("option");
+  //                       option.value = choice;
+  //                       option.text = choice;
+  //                       select.appendChild(option);
+  //                   }
+  //               }
+  //               path[level] = choices[0];
+  //               updateDropdowns(level + 1);
+  //           } else {
+  //               // Clear lower level dropdowns if no choices are available
+  //               for(let i = level; i < dropdowns.length; i++) {
+  //                   clearDropdown(i);
+  //               }
+  //           }
+  //       }
+  //
+  //       updateDropdowns(0);
+  //   }
+  //
+  //   var buttonElement = document.createElement('button');
+  //   buttonElement.type = 'button';
+  //   buttonElement.id = 'submit_button';
+  //   buttonElement.style.backgroundColor = '#4CAF50';
+  //   buttonElement.style.color = 'white';
+  //   buttonElement.style.border = 'none';
+  //   buttonElement.style.padding = '6px 20px';
+  //   buttonElement.style.textAlign = 'center';
+  //   buttonElement.style.textDecoration = 'none';
+  //   buttonElement.style.display = 'inline-block';
+  //   buttonElement.style.fontSize = '14px';
+  //   buttonElement.style.height = '40px';
+  //   buttonElement.style.cursor = 'pointer';
+  //   buttonElement.style.borderRadius = '4px';
+  //   buttonElement.textContent = 'Submit';
+  //
+  //   // Usage:
+  //   createAllDropdowns(obj.choices, sidebar);
+  //   sidebar.appendChild(buttonElement);
+  //
+  // }
 
   const addModifyChoice2 = function (param, obj) {
     function createDropdowns(data, parent) {
         let dropdowns = {};
 
-        const createDropdown = function(id, name, choices, selectedValue) {
+        const createTextbox = function(id, name) {
+            const div = document.createElement("div");
+            const textElement = document.createElement("textarea");
+            textElement.id = id;
+            textElement.style.marginTop = "2px";
+            textElement.style.fontSize = '11px';
+            textElement.style.display = "block";
+            textElement.style.width = "200px";
+            textElement.style.height = "40px";
+            textElement.value = name;
+            textElement.readOnly = true;
+            div.appendChild(textElement);
+            return div;
+        }
+
+        const createDropdown = function(id, name, choices=null, selectedValue=null) {
             const div = document.createElement("div");
             const labelElement = document.createElement("label");
             labelElement.setAttribute("for", id);
             labelElement.className = "badge bg-primary";
             labelElement.style.marginTop = "10px";
             labelElement.style.display = "block";
-            labelElement.style.width = "100px";  // Set width of the label block
+            labelElement.style.width = "200px";  // Set width of the label block
             labelElement.innerText = name;
             div.appendChild(labelElement);
 
@@ -632,14 +671,21 @@ const initGUI = function (model_params) {
             select.style = 'width:200px; display:inline-block';
             select.setAttribute('aria-label', 'select input');
 
-            for (const choice of choices) {
-                const option = document.createElement("option");
-                option.value = choice;
-                option.text = choice;
-                if (choice === selectedValue) {
-                    option.selected = true;
+            if (choices !==null) {
+                var indicateFlag = true;
+                for (const choice of choices) {
+                    const option = document.createElement("option");
+                    option.value = choice;
+                    option.text = choice;
+                    if (choice === selectedValue) {
+                        option.selected = true;
+                        indicateFlag = false;
+                    }
+                    select.appendChild(option);
                 }
-                select.appendChild(option);
+                if (indicateFlag==true) {
+                    select.selectedIndex = -1;
+                }
             }
 
             div.appendChild(select);
@@ -650,37 +696,86 @@ const initGUI = function (model_params) {
             while (select.firstChild) {
                 select.removeChild(select.firstChild);
             }
+            var indicateFlag = true;
             for (const choice of choices) {
                 const option = document.createElement("option");
                 option.value = choice;
                 option.text = choice;
                 if (choice === selectedValue) {
                     option.selected = true;
+                    indicateFlag = false;
                 }
                 select.appendChild(option);
+            }
+            if (indicateFlag==true) {
+                select.selectedIndex = -1;
             }
         }
 
         const firstIdData = data[Object.keys(data)[0]];
         dropdowns.id = createDropdown('id', 'PO ID', Object.keys(data));
-        dropdowns.supplier = createDropdown('supplier', 'Supplier', firstIdData.supplier.options, firstIdData.supplier.value);
-        dropdowns.transition = createDropdown('transition', 'Transportation', firstIdData.transition.options, firstIdData.transition.value);
+        textSupplier = createTextbox('textSupplier', 'Default supplier: '+firstIdData.textSupplier.value);
+        textL2 = createTextbox('textL2', 'L2: '+firstIdData.textL2.value);
+        textL3 = createTextbox('textL3', 'L3: '+firstIdData.textL3.value);
+        textL4 = createTextbox('textL4', 'L4: '+firstIdData.textL4.value);
+        dropdowns.level = createDropdown('level', 'Category Level', firstIdData.level.options, firstIdData.level.value);
+        dropdowns.supplier = createDropdown('supplier', 'Competitor', firstIdData.supplier.options, firstIdData.supplier.value);
+        dropdowns.transition = createDropdown('transition', 'Transmission Method', firstIdData.transition.options, firstIdData.transition.value);
+        dropdowns.inner_transition = createDropdown('inner_transition', 'Inner Transmission Method', firstIdData.inner_transition.options, firstIdData.inner_transition.value);
 
         parent.appendChild(dropdowns.id);
+        parent.appendChild(textSupplier);
+        parent.appendChild(textL2);
+        parent.appendChild(textL3);
+        parent.appendChild(textL4);
+        parent.appendChild(dropdowns.level)
         parent.appendChild(dropdowns.supplier);
         parent.appendChild(dropdowns.transition);
+        parent.appendChild(dropdowns.inner_transition);
 
         // Add event listener to ID dropdown
         document.getElementById('id').addEventListener('change', function(e) {
             const selectedId = e.target.value;
             const idData = data[selectedId];
 
+            document.getElementById('textSupplier').value = 'Default supplier: '+idData.textSupplier.value;
+            document.getElementById('textL2').value = 'L2: '+idData.textL2.value;
+            document.getElementById('textL3').value = 'L3: '+idData.textL3.value;
+            document.getElementById('textL4').value = 'L4: '+idData.textL4.value;
+
+            // Populate supplier dropdown
+            populateDropdown(document.getElementById('level'), idData.level.options, idData.level.value);
             // Populate supplier dropdown
             populateDropdown(document.getElementById('supplier'), idData.supplier.options, idData.supplier.value);
-
             // Populate transition dropdown
             populateDropdown(document.getElementById('transition'), idData.transition.options, idData.transition.value);
+
+            populateDropdown(document.getElementById('inner_transition'), idData.inner_transition.options, idData.inner_transition.value);
+
         });
+
+        // Add event listener to level dropdown
+        document.getElementById('level').addEventListener('change', function(e) {
+            const selectedId = document.getElementById('id').value;
+            const idData = data[selectedId];
+            const selectedLevel = e.target.value;
+
+            if (selectedLevel == "L2") {
+                populateDropdown(document.getElementById('supplier'), idData.supplier.options, idData.supplier.value);
+            }
+
+            // Populate supplier dropdown
+            if (selectedLevel == "L3") {
+                populateDropdown(document.getElementById('supplier'), idData.l3supplier.options, idData.l3supplier.value);
+            }
+
+            // Populate supplier dropdown
+            if (selectedLevel == 'L4') {
+                populateDropdown(document.getElementById('supplier'), idData.l4supplier.options, idData.l4supplier.value);
+            }
+
+        });
+
 
         // Add button
         var buttonElement = document.createElement('button');
@@ -705,16 +800,19 @@ const initGUI = function (model_params) {
             let id = document.getElementById('id').value;
             let supplier = document.getElementById('supplier').value;
             let transition = document.getElementById('transition').value;
-            send({ 'type': 'modify', 'container': 'parameters', 'id': id, 'supplier': supplier, 'transition': transition})
+            let inner_transition = document.getElementById('inner_transition').value;
+            send({ 'type': 'modify', 'container': 'parameters', 'id': id, 'supplier': supplier, 'transition': transition, 'inner_transition': inner_transition})
 
             data[id].supplier.value = supplier;
             data[id].transition.value = transition;
+            data[id].inner_transition.value = inner_transition
 
             let whiteboard = document.getElementById('whiteboard');
             parent.removeChild(whiteboard);
             whiteboard = addWhiteboard(data);
-            parent.appendChild(whiteboard);
-
+            // parent.appendChild(whiteboard);
+            const refElement = parent.children[parent.children.length-1];
+            parent.insertBefore(whiteboard, refElement);
         });
         parent.appendChild(buttonElement);
 
@@ -736,10 +834,15 @@ const initGUI = function (model_params) {
         for (const id in data) {
             const supplier = data[id].supplier.value;
             const transition = data[id].transition.value;
+            const inner_transition = data[id].inner_transition.value;
             const para = document.createElement("p");
             para.style.padding = "2px";
             para.style.backgroundColor = index % 2 === 0 ? "#f2f2f2" : "white";
-            para.innerHTML = `<b>${id}</b>: Supplier = <span style='color:blue'>${supplier}</span>, Transition = <span style='color:blue'>${transition}</span>`;
+            // modify the frame
+            // if id !=0:
+            // para.innerHTML = `<b>${id}</b>: Supplier = <span style='color:blue'>${supplier}</span>, Transition = <span style='color:blue'>${transition}</span>`;
+            // else:
+            para.innerHTML = `<b>${id}</b>: Supplier = <span style='color:blue'>${supplier}</span>, Transition = <span style='color:blue'>${transition}</span>,  Inner_Transition = <span style='color:blue'>${inner_transition}</span>`;
             whiteboard.appendChild(para);
             index++;
         }
@@ -750,6 +853,112 @@ const initGUI = function (model_params) {
     createDropdowns(obj.choices, sidebar);
 
   }
+
+  const addNewChoice = function (param, obj) {
+    const domID = param + "_id";
+    const template = [
+      `<p></p>
+        <label for='${domID}' class='badge bg-primary'>
+        ${obj.name}
+        </label>
+      `,
+      `<select
+        id='${domID}'
+        class='form-select'
+        style='width:200px'
+        aria-label='select input'>`,
+    ];
+    for (const idx in obj.choices) {
+      const choice = obj.choices[idx];
+      const selected = choice === obj.value ? "selected" : "";
+      template.push(`<option ${selected} value=${idx}>${choice}</option>`);
+    }
+
+    // Close the select options
+    template.push("</select>");
+
+    // Finally render the dropdown and activate choice listeners
+    const div = document.createElement("div");
+    div.innerHTML = template.join("");
+    sidebar.appendChild(div);
+
+    document.getElementById(domID).selectedIndex = -1;
+
+    const select = document.getElementById(domID);
+    select.onchange = () => {
+        // const chartElement = document.getElementById('Trans')
+        // if (chartElement.style.display === "none") {
+        //     chartElement.style.display = "block";
+        // }
+        // else{
+        //     chartElement.style.display = "none";
+        // }
+        // const datasets = [];
+        //
+        //
+        // const convertColorOpacity = (hex) => {
+        //   if (hex.indexOf("#") != 0) {
+        //     return "rgba(0,0,0,0.1)";
+        //   }
+        //
+        //   hex = hex.replace("#", "");
+        //   const r = parseInt(hex.substring(0, 2), 16);
+        //   const g = parseInt(hex.substring(2, 4), 16);
+        //   const b = parseInt(hex.substring(4, 6), 16);
+        //   return `rgba(${r},${g},${b},0.1)`;
+        // };
+        // const new_series = {
+        //     label: 'll',
+        //     borderColor: '#0000FF',
+        //     backgroundColor: convertColorOpacity('#0000FF'),
+        //     data: [],
+        // };
+        //   datasets.push(new_series);
+
+        // lastone = chartElements.lastElementChild;
+        // lastone.data=datasets;
+        // lastone.update();
+
+        const selectedValue = select.value;
+        switch (selectedValue) {
+            case '0':
+                window.scrollTo(0, document.body.scrollHeight*35/100);
+                break;
+            case '1':
+                window.scrollTo(0, document.body.scrollHeight*40/100);
+                break;
+            case '2':
+                window.scrollTo(0, document.body.scrollHeight*45/100);
+                break;
+            case '3':
+                window.scrollTo(0, document.body.scrollHeight*51/100);
+                break;
+            case '4':
+                window.scrollTo(0, document.body.scrollHeight*57/100);
+                break;
+            case '5':
+                window.scrollTo(0, document.body.scrollHeight*63/100);
+                break;
+            case '6':
+                window.scrollTo(0, document.body.scrollHeight*69/100);
+                break;
+            case '7':
+                window.scrollTo(0, document.body.scrollHeight*75/100);
+                break;
+            case '8':
+                window.scrollTo(0, document.body.scrollHeight*81/100);
+                break;
+            case '9':
+                window.scrollTo(0, document.body.scrollHeight);
+                break;
+            case '10':
+                window.scrollTo(0, document.body.scrollHeight);
+                break;
+        }
+    };
+
+  };
+
 
   const addParamInput = function (param, option) {
     switch (option["param_type"]) {
@@ -779,6 +988,9 @@ const initGUI = function (model_params) {
 
       case "modify_choice":
         addModifyChoice2(param, option);
+        break;
+      case "new_choice":
+        addNewChoice(param, option);
         break;
     }
   };

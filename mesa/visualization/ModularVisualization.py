@@ -250,9 +250,10 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
         elif msg['type'] == "modify":
             # agent, attr, value = msg['agent'], msg['attr'], msg['value']
             # self.application.model_kwargs[msg['container']].choices[agent][attr] = float(value)
-            po_id, supplier, transition = msg['id'], msg['supplier'], msg['transition']
+            po_id, supplier, transition, inner_transition = msg['id'], msg['supplier'], msg['transition'], msg['inner_transition']
             self.application.model_kwargs[msg['container']].choices[po_id]['supplier']['value'] = supplier
             self.application.model_kwargs[msg['container']].choices[po_id]['transition']['value'] = transition
+            self.application.model_kwargs[msg['container']].choices[po_id]['inner_transition']['value'] = inner_transition
             # self.application.model_kwargs[msg['container']].choices[agent][attr] = float(value) if value.isdigit() else value
             # self.application.model.modify(msg["params_name"], msg["params_value"])
         else:
