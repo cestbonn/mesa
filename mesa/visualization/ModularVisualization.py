@@ -180,6 +180,274 @@ class TextElement(VisualizationElement):
 # Actual Tornado code starts here:
 
 
+class PageHandler_simple_version(tornado.web.RequestHandler):
+    """Handler for the HTML template which holds the visualization."""
+
+    def get(self):
+        elements = self.application.visualization_elements
+        for i, element in enumerate(elements):
+            element.index = i
+        self.render(
+            "modular_template_simple_version.html",
+            port=self.application.port,
+            model_name=self.application.model_name,
+            description=self.application.description,
+            package_js_includes=self.application.package_js_includes,
+            package_css_includes=self.application.package_css_includes,
+            local_js_includes=self.application.local_js_includes,
+            local_css_includes=self.application.local_css_includes,
+            scripts=self.application.js_code,
+        )
+
+
+class SocketHandler_simple_version(tornado.websocket.WebSocketHandler):
+    """Handler for websocket."""
+
+    def open(self):
+        if self.application.verbose:
+            print("Socket opened!")
+        self.write_message(
+            {"type": "model_params", "params": self.application.user_params}
+        )
+
+    def check_origin(self, origin):
+        return True
+
+    @property
+    def viz_state_message(self):
+        return {"type": "viz_state", "data": self.application.render_model()}
+
+    def on_message(self, message):
+        """Receiving a message from the websocket, parse, and act accordingly."""
+        if self.application.verbose:
+            print(message)
+        msg = tornado.escape.json_decode(message)
+
+        if msg["type"] == "get_step":
+            if not self.application.model.running:
+                self.write_message({"type": "end"})
+            else:
+                self.application.model.step()
+                self.write_message(self.viz_state_message)
+
+        elif msg["type"] == "reset":
+            self.application.reset_model()
+            self.write_message(self.viz_state_message)
+
+        elif msg["type"] == "submit_params":
+            param = msg["param"]
+            value = msg["value"]
+
+            # Is the param editable?
+            if param in self.application.user_params:
+                if is_user_param(self.application.model_kwargs[param]):
+                    self.application.model_kwargs[param].value = value
+                else:
+                    self.application.model_kwargs[param] = value
+        elif msg["type"] == "save":
+            print('saved!')
+            self.application.model.save(msg["name"])
+        elif msg['type'] == "modify":
+            # agent, attr, value = msg['agent'], msg['attr'], msg['value']
+            # self.application.model_kwargs[msg['container']].choices[agent][attr] = float(value)
+            po_id, supplier, transition = msg['id'], msg['supplier'], msg['transition']
+            self.application.model_kwargs[msg['container']].choices[po_id]['supplier']['value'] = supplier
+            self.application.model_kwargs[msg['container']].choices[po_id]['transition']['value'] = transition
+            # self.application.model_kwargs[msg['container']].choices[agent][attr] = float(value) if value.isdigit() else value
+            # self.application.model.modify(msg["params_name"], msg["params_value"])
+        else:
+            if self.application.verbose:
+                print("Unexpected message!")
+
+
+class ModularServer_simple_version(tornado.web.Application):
+    """Main visualization application."""
+
+    EXCLUDE_LIST = ("width", "height")
+
+    def __init__(
+        self,
+        model_cls,
+        visualization_elements,
+        name="Mesa Model",
+        model_params=None,
+        port=None,
+    ):
+        """
+        Args:
+            model_cls: Mesa model class
+            visualization_elements: visualisation elements
+            name: A String for the model name
+            port: Port the webserver listens to (int)
+                Order of configuration:
+                1. Parameter to ModularServer.launch
+                2. Parameter to ModularServer()
+                3. Environment var PORT
+                4. Default value (8520)
+            model_params: A dict of model parameters
+        """
+
+        self.verbose = True
+        self.max_steps = 100000
+
+        if port is not None:
+            self.port = port
+        else:
+            # Default port to listen on
+            self.port = int(os.getenv("PORT", "8520"))
+
+        # Handlers and other globals:
+        page_handler = (r"/", PageHandler_simple_version)
+        socket_handler = (r"/ws", SocketHandler_simple_version)
+        static_handler = (
+            r"/static/(.*)",
+            tornado.web.StaticFileHandler,
+            {"path": os.path.dirname(__file__) + "/templates"},
+        )
+        custom_handler = (
+            r"/local/custom/(.*)",
+            tornado.web.StaticFileHandler,
+            {"path": ""},
+        )
+        self.handlers = [page_handler, socket_handler, static_handler, custom_handler]
+
+        self.settings = {
+            "debug": True,
+            "autoreload": False,
+            "template_path": os.path.dirname(__file__) + "/templates",
+        }
+
+        """Create a new visualization server with the given elements."""
+        if model_params is None:
+            model_params = {}
+        # Prep visualization elements:
+        self.visualization_elements = self._auto_convert_functions_to_TextElements(
+            visualization_elements
+        )
+        self.package_js_includes = set()
+        self.package_css_includes = set()
+        self.local_js_includes = set()
+        self.local_css_includes = set()
+        self.js_code = []
+        for element in self.visualization_elements:
+            for include_file in element.package_includes:
+                if self._is_stylesheet(include_file):
+                    self.package_css_includes.add(include_file)
+                else:
+                    self.package_js_includes.add(include_file)
+            if element.local_includes:
+                mapped_local_dir = element.__class__.__name__
+                element_file_handler = (
+                    rf"/local/{mapped_local_dir}/(.*)",
+                    tornado.web.StaticFileHandler,
+                    {"path": element.local_dir},
+                )
+                self.handlers.append(element_file_handler)
+                for include_file in element.local_includes:
+                    include_file_path = f"{mapped_local_dir}/{include_file}"
+                    if self._is_stylesheet(include_file):
+                        self.local_css_includes.add(include_file_path)
+                    else:
+                        self.local_js_includes.add(include_file_path)
+            self.js_code.append(element.js_code)
+
+        # Initializing the model
+        self.model_name = name
+        self.model_cls = model_cls
+        self.description = "© Copyright 2023 NEC Labs America"
+        if hasattr(model_cls, "description"):
+            self.description = model_cls.description
+        elif model_cls.__doc__ is not None:
+            self.description = model_cls.__doc__
+
+        self.model_kwargs = model_params
+        self.reset_model()
+
+        # Initializing the application itself:
+        super().__init__(self.handlers, **self.settings)
+
+    @property
+    def user_params(self):
+        result = {}
+        for param, val in self.model_kwargs.items():
+            if is_user_param(val):
+                result[param] = val.json
+
+        return result
+
+    def reset_model(self):
+        """Reinstantiate the model object, using the current parameters."""
+
+        model_params = {}
+        for key, val in self.model_kwargs.items():
+            if is_user_param(val):
+                if val.param_type == "static_text":
+                    # static_text is never used for setting params
+                    continue
+                model_params[key] = val.value
+            else:
+                model_params[key] = val
+
+        self.model = self.model_cls(**model_params)
+        # We specify the `running` attribute here so that the user doesn't have
+        # to define it explicitly in their model's __init__.
+        self.model.running = True
+
+    def render_model(self):
+        """Turn the current state of the model into a dictionary of
+        visualizations
+        """
+        visualization_state = []
+        for element in self.visualization_elements:
+            element_state = element.render(self.model)
+            visualization_state.append(element_state)
+        return visualization_state
+
+    def launch(self, port=None, open_browser=True):
+        """Run the app."""
+        if port is not None:
+            self.port = port
+        url = f"http://127.0.0.1:{self.port}"
+        print(f"Interface starting at {url}")
+        self.listen(self.port)
+        if open_browser:
+            webbrowser.open(url)
+        tornado.autoreload.start()
+        try:
+            tornado.ioloop.IOLoop.current().start()
+        except KeyboardInterrupt:
+            tornado.ioloop.IOLoop.current().stop()
+
+    @staticmethod
+    def _is_stylesheet(filename):
+        return filename.lower().endswith(".css")
+
+    def _auto_convert_fn_to_TextElement(self, x):
+        """
+        Automatically convert a function to a TextElement object.
+        See https://github.com/projectmesa/mesa/issues/1233.
+        """
+
+        # Note: a class constructor is also a callable.
+        if not callable(x):
+            # i.e. not a function
+            return x
+
+        class MyTextElement(TextElement):
+            def render(self, model):
+                return x(model)
+
+        return MyTextElement()
+
+    def _auto_convert_functions_to_TextElements(self, visualization_elements):
+        out_elements = [
+            self._auto_convert_fn_to_TextElement(e) for e in visualization_elements
+        ]
+        return out_elements
+
+
+
+
 class PageHandler(tornado.web.RequestHandler):
     """Handler for the HTML template which holds the visualization."""
 
@@ -355,7 +623,7 @@ class ModularServer(tornado.web.Application):
         # Initializing the model
         self.model_name = name
         self.model_cls = model_cls
-        self.description = "No description available"
+        self.description = "© Copyright 2023 NEC Labs America"
         if hasattr(model_cls, "description"):
             self.description = model_cls.description
         elif model_cls.__doc__ is not None:
