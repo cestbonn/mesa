@@ -714,7 +714,7 @@ const initGUI = function (model_params) {
         }
 
         const firstIdData = data[Object.keys(data)[0]];
-        dropdowns.id = createDropdown('id', 'Purchase ID', Object.keys(data));
+        dropdowns.id = createDropdown('id', 'Purchase ID', Object.keys(data), Object.keys(data)[0]);
         textSupplier = createTextbox('textSupplier', 'Default supplier: '+firstIdData.textSupplier.value);
         textL2 = createTextbox('textL2', 'L2: '+firstIdData.textL2.value);
         textL3 = createTextbox('textL3', 'L3: '+firstIdData.textL3.value);
