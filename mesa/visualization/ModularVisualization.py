@@ -407,7 +407,7 @@ class ModularServer_simple_version(tornado.web.Application):
         """Run the app."""
         if port is not None:
             self.port = port
-        url = f"http://127.0.0.1:{self.port}"
+        url = f"http://0.0.0.0:{self.port}"
         print(f"Interface starting at {url}")
         self.listen(self.port)
         if open_browser:
@@ -676,7 +676,7 @@ class ModularServer(tornado.web.Application):
         """Run the app."""
         if port is not None:
             self.port = port
-        url = f"http://127.0.0.1:{self.port}"
+        url = f"http://0.0.0.0:{self.port}"
         print(f"Interface starting at {url}")
         self.listen(self.port)
         if open_browser:
