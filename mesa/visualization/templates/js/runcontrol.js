@@ -672,7 +672,7 @@ const initGUI = function (model_params) {
             select.style = 'width:200px; display:inline-block';
             select.setAttribute('aria-label', 'select input');
 
-            if (choices !==null) {
+            if (choices !==null && selectedValue!==null) {
                 var indicateFlag = true;
                 for (const choice of choices) {
                     const option = document.createElement("option");
