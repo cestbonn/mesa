@@ -76,7 +76,14 @@ function ModelController(tick = 0, fps = 3, running = false, finished = false) {
    * If the model is in a running state this function will be called repeatedly
    * after the visualization elements are rendered. */
   this.step = function step() {
-    this.tick += 1;
+    if (this.tick<365){
+        this.tick += 1;
+    }
+    else{
+        this.running = false;
+        this.finished = true;
+        startModelButton.firstElementChild.innerText = "End";
+    }
     stepDisplay.innerText = this.tick;
     send({ type: "get_step", step: this.tick });
   };
@@ -300,14 +307,14 @@ const initGUI = function (model_params) {
     const domID = param + "_id";
     const template = [
       `<p></p>
-        <label for='${domID}' class='badge bg-primary' style="width: 200px">
+        <label for='${domID}' class='badge bg-primary' style="width: 220px">
         ${obj.name}
         </label>
       `,
       `<select
         id='${domID}'
         class='form-select'
-        style='width:200px'
+        style='width:220px'
         aria-label='select input'>`,
     ];
     for (const idx in obj.choices) {
@@ -647,7 +654,7 @@ const initGUI = function (model_params) {
             textElement.style.marginTop = "2px";
             textElement.style.fontSize = '11px';
             textElement.style.display = "block";
-            textElement.style.width = "200px";
+            textElement.style.width = "220px";
             textElement.style.height = "40px";
             textElement.value = name;
             textElement.readOnly = true;
@@ -662,17 +669,17 @@ const initGUI = function (model_params) {
             labelElement.className = "badge bg-primary";
             labelElement.style.marginTop = "10px";
             labelElement.style.display = "block";
-            labelElement.style.width = "200px";  // Set width of the label block
+            labelElement.style.width = "220px";  // Set width of the label block
             labelElement.innerText = name;
             div.appendChild(labelElement);
 
             const select = document.createElement("select");
             select.id = id;
             select.className = 'form-select';
-            select.style = 'width:200px; display:inline-block';
+            select.style = 'width:220px; display:inline-block';
             select.setAttribute('aria-label', 'select input');
 
-            if (choices !==null && selectedValue!==null) {
+            if (choices !==null) {
                 var indicateFlag = true;
                 for (const choice of choices) {
                     const option = document.createElement("option");
