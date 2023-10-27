@@ -142,6 +142,20 @@ const fpsControl = new Slider("#fps", {
 });
 fpsControl.on("change", () => controller.updateFPS(fpsControl.getValue()));
 
+
+/*
+ * Set up the the Money adjust control
+ */
+// const money_adjustControl = new Slider("#money_adjust", {
+//   max: 100,
+//   min: 0,
+//   value: 0,
+//   ticks: [0, 100],
+//   ticks_labels: [0, 100],
+//   ticks_position: [0, 100],
+// });
+
+
 /*
  * Button logic for start, stop and reset buttons
  */
@@ -216,6 +230,7 @@ const send = function (message) {
  */
 const initGUI = function (model_params) {
   const sidebar = document.getElementById("sidebar");
+  const elements_part_left = document.getElementById("elements-right-middle");
 
   const onSubmitCallback = function (param_name, value) {
     send({ type: "submit_params", param: param_name, value: value });
@@ -305,25 +320,43 @@ const initGUI = function (model_params) {
 
   const addChoiceInput = function (param, obj) {
     const domID = param + "_id";
-    const template = [
-      `<p></p>
-        <label for='${domID}' class='badge bg-primary' style="width: 220px">
-        ${obj.name}
-        </label>
-      `,
-      `<select
-        id='${domID}'
-        class='form-select'
-        style='width:220px'
-        aria-label='select input'>`,
-    ];
+    var template;
+    if (domID === 'selected_agent_id') {
+          template = [
+          `<p></p>
+            <label for='${domID}' class='badge bg-primary' style="width: 220px; display: none;">
+            ${obj.name}
+            </label>
+          `,
+          `<select
+            id='${domID}'
+            class='form-select'
+            style='width:220px; display: none;'
+            aria-label='select input'>`,
+        ];
+    }
+    else{
+           template = [
+          `<p></p>
+            <label for='${domID}' class='badge bg-primary' style="width: 220px;">
+            ${obj.name}
+            </label>
+          `,
+          `<select
+            id='${domID}'
+            class='form-select'
+            style='width:220px;'
+            aria-label='select input'>`,
+        ];
+    }
+
     for (const idx in obj.choices) {
       const choice = obj.choices[idx];
       const selected = choice === obj.value ? "selected" : "";
       // template.push(`<option ${selected} value=${idx}>${choice}</option>`);
       template.push(`<option ${selected} value=${choice}>${choice}</option>`);
     }
-
+    // console.log(domID);
     // Close the select options
     template.push("</select>");
 
@@ -691,7 +724,7 @@ const initGUI = function (model_params) {
                     }
                     select.appendChild(option);
                 }
-                if (indicateFlag==true) {
+                if (indicateFlag===true) {
                     select.selectedIndex = -1;
                 }
             }
@@ -715,13 +748,23 @@ const initGUI = function (model_params) {
                 }
                 select.appendChild(option);
             }
-            if (indicateFlag==true) {
+            if (indicateFlag===true) {
                 select.selectedIndex = -1;
             }
+            if (selectedValue==='first') {
+                select.selectedIndex = 0;
+            }
         }
+        var data1 = data[Object.keys(data)[0]];
+        const firstL2Data = data1[Object.keys(data1)[0]];
+        dropdowns.L2C = createDropdown('L2C', 'L2 Category', Object.keys(data1), Object.keys(data1)[0]);
+        L3C = createDropdown('L3C', 'L3 Category', firstL2Data.L3C.options);
+        L4C = createDropdown('L4C', 'L4 Category', firstL2Data.L4C.options);
 
-        const firstIdData = data[Object.keys(data)[0]];
-        dropdowns.id = createDropdown('id', 'Purchase ID', Object.keys(data), Object.keys(data)[0]);
+        var data2 = data[Object.keys(data)[1]];
+
+        const firstIdData = data2[Object.keys(data2)[0]];
+        dropdowns.id = createDropdown('id', 'Purchase ID', Object.keys(data2), Object.keys(data2)[0]);
         textSupplier = createTextbox('textSupplier', 'Default supplier: '+firstIdData.textSupplier.value);
         textL2 = createTextbox('textL2', 'L2: '+firstIdData.textL2.value);
         textL3 = createTextbox('textL3', 'L3: '+firstIdData.textL3.value);
@@ -731,8 +774,11 @@ const initGUI = function (model_params) {
         dropdowns.level = createDropdown('level', 'Category Level', firstIdData.level.options, firstIdData.level.value);
         dropdowns.supplier = createDropdown('supplier', 'Competitor', firstIdData.supplier.options, firstIdData.supplier.value);
         dropdowns.transition = createDropdown('transition', 'Transportation Method', firstIdData.transition.options, firstIdData.transition.value);
-        dropdowns.inner_transition = createDropdown('inner_transition', 'Inner Transportation Method', firstIdData.inner_transition.options, firstIdData.inner_transition.value);
+        dropdowns.inner_transition = createDropdown('inner_transition', 'Tier 2 Transportation Method', firstIdData.inner_transition.options, firstIdData.inner_transition.value);
 
+        parent.appendChild(dropdowns.L2C);
+        parent.appendChild(L3C);
+        parent.appendChild(L4C);
         parent.appendChild(dropdowns.id);
         parent.appendChild(textSupplier);
         parent.appendChild(textL2);
@@ -745,10 +791,135 @@ const initGUI = function (model_params) {
         parent.appendChild(dropdowns.transition);
         parent.appendChild(dropdowns.inner_transition);
 
+
+        // Add event listener to L2C dropdown
+        document.getElementById('L2C').addEventListener('change', function(e) {
+            const selectedL2 = e.target.value;
+            // console.log(selectedL2);
+            const L2Data = data1[selectedL2];
+            populateDropdown(document.getElementById('L3C'), L2Data.L3C.options, L2Data.L3C.value);
+
+            if (selectedL2===' ') {
+                populateDropdown(document.getElementById('L4C'), L2Data.L4C.options, L2Data.L4C.value);
+                populateDropdown(document.getElementById('id'), L2Data.filterID.options, L2Data.filterID.value);
+            }
+
+            else {
+                const L3Data = data1[selectedL2][document.getElementById('L3C').options[document.getElementById('L3C').selectedIndex].value];
+                populateDropdown(document.getElementById('L4C'), L3Data.L4C.options, L3Data.L4C.value);
+
+                const L4Data = L3Data[document.getElementById('L4C').options[document.getElementById('L4C').selectedIndex].value];
+                populateDropdown(document.getElementById('id'), L4Data.filterID.options, L4Data.filterID.value);
+            }
+
+
+            const selectedId = document.getElementById('id').options[document.getElementById('id').selectedIndex].value;
+            const idData = data2[selectedId];
+
+            document.getElementById('textSupplier').value = 'Default supplier: '+idData.textSupplier.value;
+            document.getElementById('textL2').value = 'L2: '+idData.textL2.value;
+            document.getElementById('textL3').value = 'L3: '+idData.textL3.value;
+            document.getElementById('textL4').value = 'L4: '+idData.textL4.value;
+            document.getElementById('textTrans').value = 'Transportation: '+idData.textTrans.value;
+            document.getElementById('textInnerTrans').value = 'Inner transportation: '+idData.textInnerTrans.value;
+
+            // Populate supplier dropdown
+            populateDropdown(document.getElementById('level'), idData.level.options, idData.level.value);
+            // Populate supplier dropdown
+            populateDropdown(document.getElementById('supplier'), idData.supplier.options, idData.supplier.value);
+            // Populate transition dropdown
+            populateDropdown(document.getElementById('transition'), idData.transition.options, idData.transition.value);
+
+            populateDropdown(document.getElementById('inner_transition'), idData.inner_transition.options, idData.inner_transition.value);
+
+        });
+
+
+        // Add event listener to L3C dropdown
+        document.getElementById('L3C').addEventListener('change', function(e) {
+            const selectedL2 = document.getElementById('L2C').options[document.getElementById('L2C').selectedIndex].value;
+            const L2Data = data1[selectedL2];
+
+            if (selectedL2===' ') {
+                populateDropdown(document.getElementById('L4C'), L2Data.L4C.options, L2Data.L4C.value);
+                populateDropdown(document.getElementById('id'), L2Data.filterID.options, L2Data.filterID.value);
+            }
+
+            else {
+                const L3Data = data1[selectedL2][document.getElementById('L3C').options[document.getElementById('L3C').selectedIndex].value];
+                populateDropdown(document.getElementById('L4C'), L3Data.L4C.options, L3Data.L4C.value);
+
+                const L4Data = L3Data[document.getElementById('L4C').options[document.getElementById('L4C').selectedIndex].value];
+                populateDropdown(document.getElementById('id'), L4Data.filterID.options, L4Data.filterID.value);
+            }
+
+
+            const selectedId = document.getElementById('id').options[document.getElementById('id').selectedIndex].value;
+            const idData = data2[selectedId];
+
+            document.getElementById('textSupplier').value = 'Default supplier: '+idData.textSupplier.value;
+            document.getElementById('textL2').value = 'L2: '+idData.textL2.value;
+            document.getElementById('textL3').value = 'L3: '+idData.textL3.value;
+            document.getElementById('textL4').value = 'L4: '+idData.textL4.value;
+            document.getElementById('textTrans').value = 'Transportation: '+idData.textTrans.value;
+            document.getElementById('textInnerTrans').value = 'Inner transportation: '+idData.textInnerTrans.value;
+
+            // Populate supplier dropdown
+            populateDropdown(document.getElementById('level'), idData.level.options, idData.level.value);
+            // Populate supplier dropdown
+            populateDropdown(document.getElementById('supplier'), idData.supplier.options, idData.supplier.value);
+            // Populate transition dropdown
+            populateDropdown(document.getElementById('transition'), idData.transition.options, idData.transition.value);
+
+            populateDropdown(document.getElementById('inner_transition'), idData.inner_transition.options, idData.inner_transition.value);
+
+        });
+
+
+        // Add event listener to L4C dropdown
+        document.getElementById('L4C').addEventListener('change', function(e) {
+            const selectedL2 = document.getElementById('L2C').options[document.getElementById('L2C').selectedIndex].value;
+            const L2Data = data1[selectedL2];
+
+            if (selectedL2===' ') {
+                populateDropdown(document.getElementById('id'), L2Data.filterID.options, L2Data.filterID.value);
+            }
+
+            else {
+                const L3Data = data1[selectedL2][document.getElementById('L3C').options[document.getElementById('L3C').selectedIndex].value];
+
+                const L4Data = L3Data[document.getElementById('L4C').options[document.getElementById('L4C').selectedIndex].value];
+                populateDropdown(document.getElementById('id'), L4Data.filterID.options, L4Data.filterID.value);
+            }
+
+
+            const selectedId = document.getElementById('id').options[document.getElementById('id').selectedIndex].value;
+            const idData = data2[selectedId];
+
+            document.getElementById('textSupplier').value = 'Default supplier: '+idData.textSupplier.value;
+            document.getElementById('textL2').value = 'L2: '+idData.textL2.value;
+            document.getElementById('textL3').value = 'L3: '+idData.textL3.value;
+            document.getElementById('textL4').value = 'L4: '+idData.textL4.value;
+            document.getElementById('textTrans').value = 'Transportation: '+idData.textTrans.value;
+            document.getElementById('textInnerTrans').value = 'Inner transportation: '+idData.textInnerTrans.value;
+
+            // Populate supplier dropdown
+            populateDropdown(document.getElementById('level'), idData.level.options, idData.level.value);
+            // Populate supplier dropdown
+            populateDropdown(document.getElementById('supplier'), idData.supplier.options, idData.supplier.value);
+            // Populate transition dropdown
+            populateDropdown(document.getElementById('transition'), idData.transition.options, idData.transition.value);
+
+            populateDropdown(document.getElementById('inner_transition'), idData.inner_transition.options, idData.inner_transition.value);
+
+        });
+
+
+
         // Add event listener to ID dropdown
         document.getElementById('id').addEventListener('change', function(e) {
             const selectedId = e.target.value;
-            const idData = data[selectedId];
+            const idData = data2[selectedId];
 
             document.getElementById('textSupplier').value = 'Default supplier: '+idData.textSupplier.value;
             document.getElementById('textL2').value = 'L2: '+idData.textL2.value;
@@ -771,7 +942,7 @@ const initGUI = function (model_params) {
         // Add event listener to level dropdown
         document.getElementById('level').addEventListener('change', function(e) {
             const selectedId = document.getElementById('id').value;
-            const idData = data[selectedId];
+            const idData = data2[selectedId];
             const selectedLevel = e.target.value;
 
             if (selectedLevel == "L2") {
@@ -790,8 +961,66 @@ const initGUI = function (model_params) {
 
         });
 
+        // Add default button
+        var defaultbutton = document.createElement('button');
+        defaultbutton.type = 'button';
+        defaultbutton.id = 'submit_button';
+        defaultbutton.style.backgroundColor = '#4CAF50';
+        defaultbutton.style.color = 'white';
+        defaultbutton.style.border = 'none';
+        defaultbutton.style.padding = '6px 20px';
+        defaultbutton.style.textAlign = 'center';
+        defaultbutton.style.textDecoration = 'none';
+        defaultbutton.style.display = 'inline-block';
+        defaultbutton.style.fontSize = '14px';
+        defaultbutton.style.height = '40px';
+        defaultbutton.style.cursor = 'pointer';
+        defaultbutton.style.borderRadius = '4px';
+        defaultbutton.style.marginTop = "10px";
+        defaultbutton.style.marginBottom = "10px";
+        defaultbutton.textContent = 'Default';
 
-        // Add button
+        defaultbutton.addEventListener("click", function() {
+
+            for (id_key_idx in Object.keys(data2)){
+                // console.log(data2[Object.keys(data2)[id_key_idx]].textSupplier.value+' '+data2[Object.keys(data2)[id_key_idx]].supplier.value)
+                var default_supplier = 'supplier_'+data2[Object.keys(data2)[id_key_idx]].textSupplier.value;
+                if (default_supplier!==data2[Object.keys(data2)[id_key_idx]].supplier.value){
+                    let id = Object.keys(data2)[id_key_idx];
+                    let supplier = default_supplier;
+                    let transition = data2[id].textTrans.value;
+                    let inner_transition = data2[id].textInnerTrans.value;
+                    send({ 'type': 'modify', 'container': 'parameters', 'id': id, 'supplier': supplier, 'transition': transition, 'inner_transition': inner_transition})
+
+
+                    data2[id].supplier.value = supplier;
+                    data2[id].transition.value = transition;
+                    data2[id].inner_transition.value = inner_transition
+
+                    let whiteboard = document.getElementById('whiteboard');
+                    parent.removeChild(whiteboard);
+                    whiteboard = addWhiteboard(data2);
+                    // parent.appendChild(whiteboard);
+                    const refElement = parent.children[parent.children.length-1];
+                    parent.insertBefore(whiteboard, refElement);
+                }
+            }
+        });
+        parent.appendChild(defaultbutton);
+
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = 'myCheckbox';
+        // Setting the size
+        checkbox.style.width = '20px';
+        checkbox.style.height = '20px';
+        // Setting the margin
+        checkbox.style.margin = '10px';
+        parent.appendChild(checkbox);
+
+
+        // Add submit button
         var buttonElement = document.createElement('button');
         buttonElement.type = 'button';
         buttonElement.id = 'submit_button';
@@ -815,26 +1044,73 @@ const initGUI = function (model_params) {
             let supplier = document.getElementById('supplier').value;
             let transition = document.getElementById('transition').value;
             let inner_transition = document.getElementById('inner_transition').value;
-            send({ 'type': 'modify', 'container': 'parameters', 'id': id, 'supplier': supplier, 'transition': transition, 'inner_transition': inner_transition})
 
-            data[id].supplier.value = supplier;
-            data[id].transition.value = transition;
-            data[id].inner_transition.value = inner_transition
+            let base_supplier = 'supplier_'+data2[id].textSupplier.value;
 
-            let whiteboard = document.getElementById('whiteboard');
-            parent.removeChild(whiteboard);
-            whiteboard = addWhiteboard(data);
-            // parent.appendChild(whiteboard);
-            const refElement = parent.children[parent.children.length-1];
-            parent.insertBefore(whiteboard, refElement);
+            if (document.getElementById('myCheckbox').checked === true && supplier!==base_supplier) {
+
+                for (id_key_idx in Object.keys(data2)){
+                    // console.log(data2[Object.keys(data2)[id_key_idx]].textSupplier.value+' '+data2[Object.keys(data2)[id_key_idx]].supplier.value)
+                    var default_supplier = 'supplier_'+data2[Object.keys(data2)[id_key_idx]].textSupplier.value;
+                    if (base_supplier===default_supplier){
+
+                        if (data2[Object.keys(data2)[id_key_idx]].supplier.options.includes(supplier) ||
+                            data2[Object.keys(data2)[id_key_idx]].l3supplier.options.includes(supplier) ||
+                            data2[Object.keys(data2)[id_key_idx]].l4supplier.options.includes(supplier)
+                        ) {
+
+
+                            let id_inner = Object.keys(data2)[id_key_idx];
+                            let transition = data2[id_inner].textTrans.value;
+                            let inner_transition = data2[id_inner].textInnerTrans.value;
+                            send({
+                                'type': 'modify',
+                                'container': 'parameters',
+                                'id': id_inner,
+                                'supplier': supplier,
+                                'transition': transition,
+                                'inner_transition': inner_transition
+                            })
+
+
+                            data2[id_inner].supplier.value = supplier;
+                            data2[id_inner].transition.value = transition;
+                            data2[id_inner].inner_transition.value = inner_transition
+
+                            let whiteboard = document.getElementById('whiteboard');
+                            parent.removeChild(whiteboard);
+                            whiteboard = addWhiteboard(data2);
+                            // parent.appendChild(whiteboard);
+                            const refElement = parent.children[parent.children.length - 1];
+                            parent.insertBefore(whiteboard, refElement);
+                        }
+                    }
+                }
+
+            }
+            else{
+
+                send({ 'type': 'modify', 'container': 'parameters', 'id': id, 'supplier': supplier, 'transition': transition, 'inner_transition': inner_transition})
+
+                data2[id].supplier.value = supplier;
+                data2[id].transition.value = transition;
+                data2[id].inner_transition.value = inner_transition
+
+                let whiteboard = document.getElementById('whiteboard');
+                parent.removeChild(whiteboard);
+                whiteboard = addWhiteboard(data2);
+                // parent.appendChild(whiteboard);
+                const refElement = parent.children[parent.children.length-1];
+                parent.insertBefore(whiteboard, refElement);
+            }
         });
         parent.appendChild(buttonElement);
 
-        const whiteboard = addWhiteboard(data);
+        const whiteboard = addWhiteboard(data2);
         parent.appendChild(whiteboard);
     }
 
-    function addWhiteboard(data) {
+    function addWhiteboard(data2) {
         const whiteboard = document.createElement("div");
         whiteboard.setAttribute('id', 'whiteboard');
         whiteboard.style.border = "1px solid gray";
@@ -845,10 +1121,10 @@ const initGUI = function (model_params) {
         whiteboard.style.padding = "10px";
 
         let index = 0;
-        for (const id in data) {
-            const supplier = data[id].supplier.value;
-            const transition = data[id].transition.value;
-            const inner_transition = data[id].inner_transition.value;
+        for (const id in data2) {
+            const supplier = data2[id].supplier.value;
+            const transition = data2[id].transition.value;
+            const inner_transition = data2[id].inner_transition.value;
             const para = document.createElement("p");
             para.style.padding = "2px";
             para.style.backgroundColor = index % 2 === 0 ? "#f2f2f2" : "white";
@@ -974,6 +1250,156 @@ const initGUI = function (model_params) {
   };
 
 
+
+  const addNewModifyChoice = function (param, obj) {
+    function createDropdowns(data, parent) {
+        let dropdowns = {};
+
+        const createDropdown = function(id, name, choices=null, values=null) {
+            const div = document.createElement("div");
+
+            div.style.width = "50%";
+            div.style.height = "100%";
+            div.style.float = "left";
+            // div.style.textAlign = 'right';
+
+            const labelElement = document.createElement("label");
+            labelElement.setAttribute("for", id);
+            labelElement.className = "badge bg-primary";
+            labelElement.style.marginTop = "10px";
+            labelElement.style.display = "block";
+            labelElement.style.width = "220px";  // Set width of the label block
+            labelElement.innerText = name;
+            div.appendChild(labelElement);
+
+            const select = document.createElement("select");
+            select.id = id;
+            select.className = 'form-select';
+            select.style = 'width:220px; display:inline-block';
+            select.setAttribute('aria-label', 'select input');
+
+            if (choices !==null) {
+
+                for (const choice of choices) {
+                    const option = document.createElement("option");
+                    option.value = values[choice];
+                    option.text = choice;  //+','+values[choice];
+                    select.appendChild(option);
+                }
+                select.selectedIndex = 0;
+            }
+
+            div.appendChild(select);
+            return div;
+        }
+
+        const populateDropdown = function(select, choices, values) {
+            while (select.firstChild) {
+                select.removeChild(select.firstChild);
+            }
+            for (const choice of choices) {
+                const option = document.createElement("option");
+                option.value = values[choice];
+                option.text = choice;  //+','+values[choice];
+                select.appendChild(option);
+            }
+            select.selectedIndex = 0;
+        }
+
+        const firstIdData = data[Object.keys(data)[0]];
+        dropdowns.money_supplier1 = createDropdown('money_supplier1', 'Supplier#1', Object.keys(data), firstIdData.Spend_USD);
+        dropdowns.money_supplier2 = createDropdown('money_supplier2', 'Supplier#2', firstIdData.Compared_Supplier.options, firstIdData.Spend_USD);
+
+        parent.appendChild(dropdowns.money_supplier1);
+        parent.appendChild(dropdowns.money_supplier2);
+
+        // Add event listener to ID dropdown
+        document.getElementById('money_supplier1').addEventListener('change', function(e) {
+
+            var selectedOption = document.getElementById('money_supplier1').options[document.getElementById('money_supplier1').selectedIndex];
+
+            // Get the text of the selected option
+            var selectedText = selectedOption.text;
+            var idData = data[selectedText];
+
+
+            // Populate supplier dropdown
+            populateDropdown(document.getElementById('money_supplier2'), idData.Compared_Supplier.options, idData.Spend_USD);
+
+            var money_value = document.getElementById("money_sum").value;
+            if (money_value === '') {
+                    money_value = '0';
+            }
+
+            const left = moneyAdjustSlider.getValue();
+            const right = 100 - left;
+
+            const left_sum = money_value*left/100;
+            const right_sum = money_value*right/100;
+
+            console.log(money_value+' '+left)
+
+            const left_money_value = parseFloat(document.getElementById('money_supplier1').options[document.getElementById('money_supplier1').selectedIndex].value.split(',')[0]);
+            const left_CO2_value = parseFloat(document.getElementById('money_supplier1').options[document.getElementById('money_supplier1').selectedIndex].value.split(',')[1]);
+
+            var right_money_value = 0;
+            var right_CO2_value = 0;
+            if (document.getElementById("money_supplier2").length!==0) {
+                right_money_value = parseFloat(document.getElementById('money_supplier2').options[document.getElementById('money_supplier2').selectedIndex].value.split(',')[0]);
+                right_CO2_value = parseFloat(document.getElementById('money_supplier2').options[document.getElementById('money_supplier2').selectedIndex].value.split(',')[1]);
+            }
+
+            if (right_CO2_value === 0){
+                moneychart.data.datasets[0].data = [left_sum/left_money_value*left_CO2_value, 0];
+            }
+            moneychart.data.datasets[0].data = [left_sum/left_money_value*left_CO2_value, right_sum/right_money_value*right_CO2_value];
+            moneychart.update();
+
+        });
+
+
+        document.getElementById('money_supplier2').addEventListener('change', function() {
+
+            var money_value = document.getElementById("money_sum").value;
+            if (money_value === '') {
+                    money_value = '0';
+            }
+
+            const left = moneyAdjustSlider.getValue();
+            const right = 100 - left;
+
+            const left_sum = money_value*left/100;
+            const right_sum = money_value*right/100;
+
+            console.log(money_value+' '+left)
+
+            const left_money_value = parseFloat(document.getElementById('money_supplier1').options[document.getElementById('money_supplier1').selectedIndex].value.split(',')[0]);
+            const left_CO2_value = parseFloat(document.getElementById('money_supplier1').options[document.getElementById('money_supplier1').selectedIndex].value.split(',')[1]);
+
+            var right_money_value = 0;
+            var right_CO2_value = 0;
+            if (document.getElementById("money_supplier2").length!==0) {
+                right_money_value = parseFloat(document.getElementById('money_supplier2').options[document.getElementById('money_supplier2').selectedIndex].value.split(',')[0]);
+                right_CO2_value = parseFloat(document.getElementById('money_supplier2').options[document.getElementById('money_supplier2').selectedIndex].value.split(',')[1]);
+            }
+
+            if (right_CO2_value === 0){
+                moneychart.data.datasets[0].data = [left_sum/left_money_value*left_CO2_value, 0];
+            }
+            moneychart.data.datasets[0].data = [left_sum/left_money_value*left_CO2_value, right_sum/right_money_value*right_CO2_value];
+            moneychart.update();
+        });
+
+
+
+    }
+
+    createDropdowns(obj.choices, elements_part_left);
+
+  }
+
+
+
   const addParamInput = function (param, option) {
     switch (option["param_type"]) {
       case "checkbox":
@@ -1005,6 +1431,9 @@ const initGUI = function (model_params) {
         break;
       case "new_choice":
         addNewChoice(param, option);
+        break;
+      case "new_modify_choice":
+        addNewModifyChoice(param, option);
         break;
     }
   };

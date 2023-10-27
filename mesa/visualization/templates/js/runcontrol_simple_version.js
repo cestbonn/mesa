@@ -73,7 +73,14 @@ function ModelController(tick = 0, fps = 3, running = false, finished = false) {
    * If the model is in a running state this function will be called repeatedly
    * after the visualization elements are rendered. */
   this.step = function step() {
-    this.tick += 1;
+    if (this.tick<365){
+        this.tick += 1;
+    }
+    else{
+        this.running = false;
+        this.finished = true;
+        startModelButton.firstElementChild.innerText = "End";
+    }
     stepDisplay.innerText = this.tick;
     send({ type: "get_step", step: this.tick });
   };

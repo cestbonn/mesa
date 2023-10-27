@@ -17,6 +17,41 @@
 	the server (the port is set via the template). On every step, it receives inputs, one per module, and sends
 	them to the associated function to render. -->
 </head>
+
+<style>
+    .small-space {
+            float: right;
+            width: 65%; /* Adjust the width of the small space as needed */
+            height: 300px; /* Adjust the height as needed */
+            /*background-color: #aaa;*/
+        }
+    .right_container_left-side {
+            margin-left: 0;
+            padding: 0;
+            width: 50%;
+            height: 100%;
+            float: left;
+            /*background-color: #ccc;*/
+        }
+
+    .right_container_right-side {
+            margin-right: 0;
+            padding: 0;
+            width: 50%;
+            height: 100%;
+            float: left;
+            /*background-color: #ddd;*/
+    }
+
+        /* Hide the up and down arrows in the number input */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+</style>
+
 <body>
 
     <!-- Navbar -->
@@ -63,6 +98,19 @@
                 <p>Current Step: <span id="currentStep">0</span>
                 </p>
             </div>
+            <div id="elements-right" class="small-space">
+                    <div id="elements-right-top">
+                        <label class="badge bg-primary" for="money_sum" style="width:100px"> USD($): </label>
+                        <input type="number" id="money_sum" oninput="restrictToNumbers(event)" style="height:30px; width:100px">
+                        <label class="badge bg-primary" for="money_adjust" style="margin-right: 15px">Adjust:</label>
+                        <input id="money_adjust" data-slider-id="money_adjust" type="text">
+                    </div>
+                    <div id="elements-right-middle">
+                    </div>
+                    <div id="elements-right-bottom">
+                        <canvas id="barChart" style="width: 100px; height: 50px;"></canvas>
+                    </div>
+            </div>
         </div>
     </div>
 
@@ -100,6 +148,58 @@
     <script>
         var port = {{ port }};
     </script>
+
+
+    <script>
+        // Initialize the slider
+      const moneyAdjustSlider = new Slider("#money_adjust", {
+        max: 100,
+        min: 0,
+        value: 0,
+        ticks: [0, 100],
+        ticks_positions: [0, 100],
+      });
+
+      // Initialize the Chart.js chart
+      const ctx = document.getElementById("barChart").getContext("2d");
+      const moneychart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["#1", "#2"],
+          datasets: [{
+            label: "",
+            data: [0, 0],
+            backgroundColor: ["rgba(75, 192, 192, 0.2)", "rgba(255, 99, 132, 0.2)"],
+            borderColor: ["rgba(75, 192, 192, 1)", "rgba(255, 99, 132, 1)"],
+            borderWidth: 1,
+          }],
+        },
+        options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: "CO2 (kg)",
+                    font: {size:20},
+                  },
+              },
+              x: {
+                display: false,
+              },
+
+            },
+            plugins: {
+              legend: {
+                display: false, // Hide the legend
+              },
+            },
+          },
+        });
+    </script>
+
+
     <script src="/static/js/runcontrol.js"></script>
 
     <!-- Element-specific scripts go here -->
@@ -108,4 +208,79 @@
 			{% raw script %}
 	    {% end %}
     </script>
+
+
+
+  <script>
+
+    function restrictToNumbers(event) {
+            const input = event.target;
+            input.value = input.value.replace(/[^0-9]/g, '');
+        }
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+      document.getElementById("money_sum").addEventListener("blur", function() {
+
+            var money_value = this.value;
+            if (money_value === '') {
+                    money_value = '0';
+            }
+
+            const left = moneyAdjustSlider.getValue();
+            const right = 100 - left;
+
+            const left_sum = money_value*left/100;
+            const right_sum = money_value*right/100;
+
+            const left_money_value = parseFloat(document.getElementById('money_supplier1').options[document.getElementById('money_supplier1').selectedIndex].value.split(',')[0]);
+            const left_CO2_value = parseFloat(document.getElementById('money_supplier1').options[document.getElementById('money_supplier1').selectedIndex].value.split(',')[1]);
+
+            var right_money_value = 0;
+            var right_CO2_value = 0;
+            if (document.getElementById("money_supplier2").length!==0) {
+                right_money_value = parseFloat(document.getElementById('money_supplier2').options[document.getElementById('money_supplier2').selectedIndex].value.split(',')[0]);
+                right_CO2_value = parseFloat(document.getElementById('money_supplier2').options[document.getElementById('money_supplier2').selectedIndex].value.split(',')[1]);
+            }
+
+            if (right_CO2_value === 0){
+                moneychart.data.datasets[0].data = [left_sum/left_money_value*left_CO2_value, 0];
+            }
+            moneychart.data.datasets[0].data = [left_sum/left_money_value*left_CO2_value, right_sum/right_money_value*right_CO2_value];
+            moneychart.update();
+
+        });
+
+      // Update the chart when the slider value changes
+      moneyAdjustSlider.on("slide", function (sliderValue) {
+
+        var money_value = document.getElementById("money_sum").value;
+        if (money_value === '') {
+                money_value = '0';
+        }
+
+        const left = sliderValue;
+        const right = 100 - left;
+
+        const left_sum = money_value*left;
+        const right_sum = money_value*right;
+
+        const left_money_value = parseFloat(document.getElementById('money_supplier1').options[document.getElementById('money_supplier1').selectedIndex].value.split(',')[0]);
+        const left_CO2_value = parseFloat(document.getElementById('money_supplier1').options[document.getElementById('money_supplier1').selectedIndex].value.split(',')[1]);
+
+        var right_money_value = 0;
+        var right_CO2_value = 0;
+        if (document.getElementById("money_supplier2").length!==0) {
+            right_money_value = parseFloat(document.getElementById('money_supplier2').options[document.getElementById('money_supplier2').selectedIndex].value.split(',')[0]);
+            right_CO2_value = parseFloat(document.getElementById('money_supplier2').options[document.getElementById('money_supplier2').selectedIndex].value.split(',')[1]);
+        }
+
+        if (right_CO2_value === 0){
+            moneychart.data.datasets[0].data = [left_sum/left_money_value*left_CO2_value, 0];
+        }
+        moneychart.data.datasets[0].data = [left_sum/left_money_value*left_CO2_value, right_sum/right_money_value*right_CO2_value];
+        moneychart.update();
+      });
+    });
+  </script>
 </body>

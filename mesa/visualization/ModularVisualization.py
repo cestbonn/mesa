@@ -407,7 +407,7 @@ class ModularServer_simple_version(tornado.web.Application):
         """Run the app."""
         if port is not None:
             self.port = port
-        url = f"http://0.0.0.0:{self.port}"
+        url = f"http://127.0.0.1:{self.port}"
         print(f"Interface starting at {url}")
         self.listen(self.port)
         if open_browser:
@@ -519,9 +519,11 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
             # agent, attr, value = msg['agent'], msg['attr'], msg['value']
             # self.application.model_kwargs[msg['container']].choices[agent][attr] = float(value)
             po_id, supplier, transition, inner_transition = msg['id'], msg['supplier'], msg['transition'], msg['inner_transition']
-            self.application.model_kwargs[msg['container']].choices[po_id]['supplier']['value'] = supplier
-            self.application.model_kwargs[msg['container']].choices[po_id]['transition']['value'] = transition
-            self.application.model_kwargs[msg['container']].choices[po_id]['inner_transition']['value'] = inner_transition
+            self.application.model_kwargs[msg['container']].choices['2'][po_id]['supplier']['value'] = supplier
+            # self.application.model_kwargs[msg['container']].choices['2'][po_id]['l3supplier']['value'] = supplier
+            # self.application.model_kwargs[msg['container']].choices['2'][po_id]['l4supplier']['value'] = supplier
+            self.application.model_kwargs[msg['container']].choices['2'][po_id]['transition']['value'] = transition
+            self.application.model_kwargs[msg['container']].choices['2'][po_id]['inner_transition']['value'] = inner_transition
             # self.application.model_kwargs[msg['container']].choices[agent][attr] = float(value) if value.isdigit() else value
             # self.application.model.modify(msg["params_name"], msg["params_value"])
         else:
@@ -676,7 +678,7 @@ class ModularServer(tornado.web.Application):
         """Run the app."""
         if port is not None:
             self.port = port
-        url = f"http://0.0.0.0:{self.port}"
+        url = f"http://127.0.0.1:{self.port}"
         print(f"Interface starting at {url}")
         self.listen(self.port)
         if open_browser:
