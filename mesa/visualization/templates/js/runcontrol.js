@@ -775,10 +775,13 @@ const initGUI = function (model_params) {
         dropdowns.supplier = createDropdown('supplier', 'Competitor', firstIdData.supplier.options, firstIdData.supplier.value);
         dropdowns.transition = createDropdown('transition', 'Transportation Method', firstIdData.transition.options, firstIdData.transition.value);
         dropdowns.inner_transition = createDropdown('inner_transition', 'Tier 2 Transportation Method', firstIdData.inner_transition.options, firstIdData.inner_transition.value);
+        dropdowns.l5category = createDropdown('textL5', 'L5 Category', firstIdData.textL5.options, firstIdData.textL5.value);
 
         parent.appendChild(dropdowns.L2C);
         parent.appendChild(L3C);
         parent.appendChild(L4C);
+        parent.appendChild(dropdowns.l5category);
+
         parent.appendChild(dropdowns.id);
         parent.appendChild(textSupplier);
         parent.appendChild(textL2);
@@ -788,6 +791,15 @@ const initGUI = function (model_params) {
         parent.appendChild(textInnerTrans);
         parent.appendChild(dropdowns.level)
         parent.appendChild(dropdowns.supplier);
+
+        const supplier_img = document.createElement('img');
+        supplier_img.src = '/static/tree1.png';
+        supplier_img.alt = 'ERROR';
+        supplier_img.style.display = 'block';
+        supplier_img.style.width = '50%';
+        supplier_img.style.height = 'auto';
+        parent.appendChild(supplier_img);
+
         parent.appendChild(dropdowns.transition);
         parent.appendChild(dropdowns.inner_transition);
 
@@ -832,6 +844,14 @@ const initGUI = function (model_params) {
 
             populateDropdown(document.getElementById('inner_transition'), idData.inner_transition.options, idData.inner_transition.value);
 
+            populateDropdown(document.getElementById('textL5'), idData.textL5.options, idData.textL5.value);
+
+            if (document.getElementById('supplier').options[document.getElementById('supplier').selectedIndex].value !== 'supplier_2023002754'){
+                supplier_img.style.display = 'none';
+            }
+            else {
+                supplier_img.style.display = 'block';
+            }
         });
 
 
@@ -873,6 +893,14 @@ const initGUI = function (model_params) {
 
             populateDropdown(document.getElementById('inner_transition'), idData.inner_transition.options, idData.inner_transition.value);
 
+            populateDropdown(document.getElementById('textL5'), idData.textL5.options, idData.textL5.value);
+
+            if (document.getElementById('supplier').options[document.getElementById('supplier').selectedIndex].value !== 'supplier_2023002754'){
+                supplier_img.style.display = 'none';
+            }
+            else {
+                supplier_img.style.display = 'block';
+            }
         });
 
 
@@ -912,6 +940,14 @@ const initGUI = function (model_params) {
 
             populateDropdown(document.getElementById('inner_transition'), idData.inner_transition.options, idData.inner_transition.value);
 
+            populateDropdown(document.getElementById('textL5'), idData.textL5.options, idData.textL5.value);
+
+            if (document.getElementById('supplier').options[document.getElementById('supplier').selectedIndex].value !== 'supplier_2023002754'){
+                supplier_img.style.display = 'none';
+            }
+            else {
+                supplier_img.style.display = 'block';
+            }
         });
 
 
@@ -937,6 +973,14 @@ const initGUI = function (model_params) {
 
             populateDropdown(document.getElementById('inner_transition'), idData.inner_transition.options, idData.inner_transition.value);
 
+            populateDropdown(document.getElementById('textL5'), idData.textL5.options, idData.textL5.value);
+
+            if (document.getElementById('supplier').options[document.getElementById('supplier').selectedIndex].value !== 'supplier_2023002754'){
+                supplier_img.style.display = 'none';
+            }
+            else {
+                supplier_img.style.display = 'block';
+            }
         });
 
         // Add event listener to level dropdown
@@ -959,6 +1003,24 @@ const initGUI = function (model_params) {
                 populateDropdown(document.getElementById('supplier'), idData.l4supplier.options, idData.l4supplier.value);
             }
 
+            if (document.getElementById('supplier').options[document.getElementById('supplier').selectedIndex].value !== 'supplier_2023002754'){
+                supplier_img.style.display = 'none';
+            }
+            else {
+                supplier_img.style.display = 'block';
+            }
+
+        });
+
+        // Add event listener to level dropdown
+        document.getElementById('supplier').addEventListener('change', function(e) {
+            const selectedSupplier = e.target.value;
+            if (selectedSupplier !== 'supplier_2023002754'){
+                supplier_img.style.display = 'none';
+            }
+            else {
+                supplier_img.style.display = 'block';
+            }
         });
 
         // Add default button
@@ -995,7 +1057,8 @@ const initGUI = function (model_params) {
 
                     data2[id].supplier.value = supplier;
                     data2[id].transition.value = transition;
-                    data2[id].inner_transition.value = inner_transition
+                    data2[id].inner_transition.value = inner_transition;
+
 
                     let whiteboard = document.getElementById('whiteboard');
                     parent.removeChild(whiteboard);
@@ -1045,6 +1108,8 @@ const initGUI = function (model_params) {
             let transition = document.getElementById('transition').value;
             let inner_transition = document.getElementById('inner_transition').value;
 
+            let textL5 = document.getElementById('textL5').value;
+
             let base_supplier = 'supplier_'+data2[id].textSupplier.value;
 
             if (document.getElementById('myCheckbox').checked === true && supplier!==base_supplier) {
@@ -1075,7 +1140,7 @@ const initGUI = function (model_params) {
 
                             data2[id_inner].supplier.value = supplier;
                             data2[id_inner].transition.value = transition;
-                            data2[id_inner].inner_transition.value = inner_transition
+                            data2[id_inner].inner_transition.value = inner_transition;
 
                             let whiteboard = document.getElementById('whiteboard');
                             parent.removeChild(whiteboard);
@@ -1090,11 +1155,13 @@ const initGUI = function (model_params) {
             }
             else{
 
-                send({ 'type': 'modify', 'container': 'parameters', 'id': id, 'supplier': supplier, 'transition': transition, 'inner_transition': inner_transition})
+                send({ 'type': 'modify', 'container': 'parameters', 'id': id, 'supplier': supplier, 'transition': transition, 'inner_transition': inner_transition, 'textL5': textL5})
 
                 data2[id].supplier.value = supplier;
                 data2[id].transition.value = transition;
-                data2[id].inner_transition.value = inner_transition
+                data2[id].inner_transition.value = inner_transition;
+                // data2[id].textL5.value = textL5;
+                // console.log(textL5);
 
                 let whiteboard = document.getElementById('whiteboard');
                 parent.removeChild(whiteboard);
